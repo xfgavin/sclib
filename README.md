@@ -1,0 +1,2 @@
+# sclib
+Shell CSV Library
