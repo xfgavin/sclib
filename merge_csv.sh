@@ -40,7 +40,7 @@ Examples:
 `basename $0` -1 csv1 -2 csv2 -c1 1.1 -c2 2.3 -k 1.2,1.3,2.2,2.4 -o newcsv -e 2.5
 
 USAGE
-[ ${#ERROR} ] && echo -e '\E[7;31;40m'"\033[1mError: $ERROR\033[0m" && exit -1
+[ ${#ERROR} -gt 0 ] && echo -e "\e[1;101;93mError: $ERROR\e[0m" && exit -1
 exit 0
 }
 

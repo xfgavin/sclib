@@ -34,7 +34,7 @@ Examples:
 
 USAGE
 rm -f $lck
-[ ${#ERROR} ] && echo -e '\E[7;31;40m'"\033[1mError: $ERROR\033[0m" && exit -1
+[ ${#ERROR} -gt 0 ] && echo -e "\e[1;101;93mError: $ERROR\e[0m" && exit -1
 exit 0
 }
 
