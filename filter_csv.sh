@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 SCRIPTROOT=$( cd $(dirname $0) ; pwd)
 Usage(){
 cat <<USAGE

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 SCRIPTROOT=$( cd $(dirname $0) ; pwd)
 Usage(){
 cat <<USAGE
@@ -27,8 +27,12 @@ by xfgavin@gmail.com 08/18/2017 @UCSD
   Please refer to man page of join
 
 Optional:
--u <1/0>
+-u <0/1/2/3>
   Whether to keep unmatched data.
+  0: keep none
+  1: keep unmatched from first input
+  2: keep unmatched from second input
+  3: keep unmatched from both inputs
 -nhd
   csvs don't have header
   by default, the first rows of those csvs will be considered as headers.
@@ -45,6 +49,7 @@ exit 0
 }
 
 mergecsv(){
+  export LC_ALL=C
   column_to_exclude_1=`echo $column_to_exclude| grep -oE "1\.[0-9]*,|1\.[0-9]*$"`
   column_to_exclude_2=`echo $column_to_exclude| grep -oE "2\.[0-9]*,|2\.[0-9]*$"`
   [ ${#column_to_exclude_1} -eq 0 ] && column_to_exclude_1="1.$common_column_1" || column_to_exclude_1="$column_to_exclude_1,1.$common_column_1"
@@ -55,6 +60,7 @@ mergecsv(){
 #  mergedfile_tmp2=`echo $mergedfile|sed -e "s/\.$file_ext$/_tmp2.$file_ext/g"`
   mergedfile_tmp1=`echo $mergedfile|sed -e "s/\(\.[^.]*\)$/_tmp1\1/g"`
   mergedfile_tmp2=`echo $mergedfile|sed -e "s/\(\.[^.]*\)$/_tmp2\1/g"`
+
   header_1=`head -n 1 $file_1`
   header_2=`head -n 1 $file_2`
   
@@ -106,34 +112,41 @@ mergecsv(){
   output_format=`echo $output_format|sed -e "s/,,/,/g" -e "s/ //g" -e "s/,$//g"`
   if [ $noheader -eq 0 ]
   then
-    join --header -t',' -1 $common_column_1 -2 $common_column_2 -a1 -o 0,$output_format <( echo $header_1 && tail -n +2 $file_1 |sort -t, -k$common_column_1) <(echo $header_2 && tail -n +2 $file_2 | sort -t, -k$common_column_2) > $mergedfile_tmp1
+    join --header -t',' -1 $common_column_1 -2 $common_column_2 -a1 -o 0,$output_format <( echo $header_1 && tail -n +2 $file_1 |LC_ALL=C sort -t, -k$common_column_1) <(echo $header_2 && tail -n +2 $file_2 |LC_ALL=C sort -t, -k$common_column_2) > $mergedfile_tmp1
   else
-    join -t',' -1 $common_column_1 -2 $common_column_2 -a1 -o 0,$output_format <( sort -t, -k$common_column_1 $file_1 ) <( sort -t, -k$common_column_2 $file_2 ) > $mergedfile_tmp1
+    join -t',' -1 $common_column_1 -2 $common_column_2 -a1 -o 0,$output_format <( LC_ALL=C sort -t, -k$common_column_1 $file_1 ) <( LC_ALL=C sort -t, -k$common_column_2 $file_2 ) > $mergedfile_tmp1
   fi
   
   output_format=`echo $output_format|sed -e "s/1\./3./g" -e "s/2\./1./g"`
   output_format=`echo $output_format|sed -e "s/3\./2./g"`
   if [ $noheader -eq 0 ]
   then
-    join --header -t',' -1 $common_column_2 -2 $common_column_1 -a1 -o 0,$output_format <( echo $header_2 && tail -n +2 $file_2 |sort -t, -k$common_column_2) <(echo $header_1 && tail -n +2 $file_1 | sort -t, -k$common_column_1) > $mergedfile_tmp2
+    join --header -t',' -1 $common_column_2 -2 $common_column_1 -a1 -o 0,$output_format <( echo $header_2 && tail -n +2 $file_2 |LC_ALL=C sort -t, -k$common_column_2) <(echo $header_1 && tail -n +2 $file_1 | LC_ALL=C sort -t, -k$common_column_1) > $mergedfile_tmp2
   else
-    join -t',' -1 $common_column_2 -2 $common_column_1 -a1 -o 0,$output_format <( sort -t, -k$common_column_2 $file_2 ) <( sort -t, -k$common_column_1 $file_1 ) > $mergedfile_tmp2
+    join -t',' -1 $common_column_2 -2 $common_column_1 -a1 -o 0,$output_format <( LC_ALL=C sort -t, -k$common_column_2 $file_2 ) <( LC_ALL=C sort -t, -k$common_column_1 $file_1 ) > $mergedfile_tmp2
   fi
   
   grep -axFf $mergedfile_tmp1 $mergedfile_tmp2 >$mergedfile
   
-  if [ $nodiff -eq 0 ]
-  then
-    grep -avxFf $mergedfile_tmp1 $mergedfile_tmp2 >>$mergedfile
-    grep -avxFf $mergedfile_tmp2 $mergedfile_tmp1 >>$mergedfile
-  fi
+  case $keepdiff in
+    1)
+      grep -avxFf $mergedfile_tmp2 $mergedfile_tmp1 >>$mergedfile
+      ;;
+    2)
+      grep -avxFf $mergedfile_tmp1 $mergedfile_tmp2 >>$mergedfile
+      ;;
+    3)
+      grep -avxFf $mergedfile_tmp1 $mergedfile_tmp2 >>$mergedfile
+      grep -avxFf $mergedfile_tmp2 $mergedfile_tmp1 >>$mergedfile
+      ;;
+  esac
   rm -f $mergedfile_tmp1 $mergedfile_tmp2
 }
 
 re_number='^[0-9]+$'
 common_column_1=1
 common_column_2=1
-nodiff=1
+keepdiff=0
 noheader=0
 if [ $# -eq 1 ]
 then
@@ -183,7 +196,7 @@ else
         ;;
       -u)
         #Whether to keep unmatched columns
-        [[ $2 =~ '^[0-1]$' ]] && nodiff=$2
+        [[ $2 =~ '^[0-3]$' ]] && keepdiff=$2
         shift 2
         ;;
       -nhd)
@@ -203,4 +216,5 @@ fi
 [ ! -f $file_1 ] && ERROR="1st file is not readable" && Usage
 [ ! -f $file_2 ] && ERROR="2nd file is not readable" && Usage
 [ $file_1 = $file_2 ] && ERROR="input files should be uniq" && Usage
+export LC_ALL=C
 mergecsv

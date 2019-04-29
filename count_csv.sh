@@ -1,34 +1,28 @@
 #!/usr/bin/env bash
 SCRIPTROOT=$( cd $(dirname $0) ; pwd)
-Usage(){
-cat <<USAGE
+usage()
+{
+[ ${#Error} -gt 0 ] && echo -e "\nError: $Error\n"
+cat <<EOF
 ++++++++++++++++++++++++++++++++++++++++++++++++++++
 Part of sclib (https://github.com/xfgavin/sclib)
-View csv in terminal window
-Adapted from Chris Jean https://chrisjean.com/view-csv-data-from-the-command-line/
-by xfgavin@gmail.com 01/26/2018 @UCSD
+Print dimentional information for a given csv file
+by xfgavin@gmail.com 09/25/2018 @UCSD
 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+usage: `basename $0` options
 
-`basename $0` -i </path/to/csv>
-Required:
-  /path/to/csv
-Options:
-    -i      csv file
+OPTIONS:
+   -i      csv file
 
-Examples:
-`basename $0` -i csv
+Example:
+  `basename $0` -i /path/to/csv
 
-USAGE
-[ ${#ERROR} -gt 0 ] && echo -e "\e[1;101;93mError: $ERROR\e[0m" && exit -1
+EOF
+[ ${#Error} -gt 0 ] && exit -1
 exit 0
 }
 
-termviewer(){
-  cat $csv | sed -e 's/,,/, ,/g' | column -s, -t | less -#5 -N -S
-}
-
 csv=
-column=
 if [ "${1:0:1}" = "-" ]
 then
   while getopts "i:" OPTION
@@ -50,4 +44,10 @@ fi
 [ -z "$csv" ] && Error="No csv file is provided" && usage
 [ ! -f $csv ] && Error="csv file does not exist" && usage
 
-termviewer
+row_count=`wc -l $1|awk '{print $1}'`
+((row_count=row_count-1))
+column_count=`head -n1 $1|sed -e "s/,\+/,/g" -e "s/,/\n/g"|wc -l`
+echo "Name: `basename $1`"
+echo "Path: `dirname $1`"
+echo "Rows: $row_count"
+echo "Columns: $column_count"
